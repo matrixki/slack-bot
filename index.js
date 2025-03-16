@@ -420,11 +420,14 @@ receiver.router.get("/api/conversations", async (req, res) => {
         console.log(`📜 Fetching conversations for User ${userId}`);
 
         // ✅ Retrieve conversations for both Slack & Dashboard messages
-        const [conversations] = await db.query(
+        const result = await db.query(
             "SELECT user_message, bot_response, source, timestamp FROM queries WHERE user_id = ? ORDER BY timestamp ASC",
             [userId]
-        );
-
+          );
+          
+        // ✅ Ensure the result is an array
+        const conversations = Array.isArray(result[0]) ? result[0] : [];
+        
         return res.json({ conversations });
     } catch (error) {
         console.error("❌ API Error:", error);
