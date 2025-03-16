@@ -371,10 +371,12 @@ receiver.router.post("/api/chat", async (req, res) => {
         }
 
         // ✅ Retrieve File Context from Uploaded Files
-        const [rows] = await db.query(
+        const rows = await db.query(
             "SELECT file_content FROM uploaded_files WHERE user_id = ? ORDER BY uploaded_at DESC",
             [userId]
         );
+
+        console.log("📂 Extracted File Content for AI:", rows);
 
         let fileContext = "";
 
@@ -384,7 +386,7 @@ receiver.router.post("/api/chat", async (req, res) => {
             fileContext = rows.file_content;
         }
 
-        console.log("📂 Extracted File Content for AI:", fileContext);
+        console.log("📂 Extracted File Context for AI:", fileContext);
 
         // ✅ Store User Message in DB with source = 'dashboard'
         await db.query(
@@ -424,9 +426,11 @@ receiver.router.get("/api/conversations", async (req, res) => {
             "SELECT user_message, bot_response, source, timestamp FROM queries WHERE user_id = ? ORDER BY timestamp ASC",
             [userId]
           );
-          
+
+        console.log("📜 Conversations fetched:", result);
+
         // ✅ Ensure the result is an array
-        const conversations = Array.isArray(result[0]) ? result[0] : [];
+        const conversations = Array.isArray(result) ? result : [];
         
         return res.json({ conversations });
     } catch (error) {
