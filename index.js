@@ -388,20 +388,14 @@ receiver.router.post("/api/chat", async (req, res) => {
 
         console.log("📂 Extracted File Context for AI:", fileContext);
 
-        // ✅ Store User Message in DB with source = 'dashboard'
-        await db.query(
-            "INSERT INTO queries (user_id, user_message, bot_response, source) VALUES (?, ?, '', 'dashboard')",
-            [userId, message]
-        );
-
         // ✅ Get AI response
         const botResponse = await getOpenAIResponse(message, userId, pastMessages, fileContext);
         console.log(`🤖 Bot Response to User ${userId}: ${botResponse}`);
 
-        // ✅ Store Bot Response in DB with source = 'dashboard'
+        // ✅ Store User Message and Bot Response in DB with source = 'dashboard'
         await db.query(
-            "UPDATE queries SET bot_response = ? WHERE user_id = ? AND user_message = ? AND source = 'dashboard'",
-            [botResponse, userId, message]
+            "INSERT INTO queries (user_id, user_message, bot_response, source) VALUES (?, ?, ?, 'dashboard')",
+            [userId, message, botResponse]
         );
 
         // ✅ Send JSON response
