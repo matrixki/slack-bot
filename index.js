@@ -210,6 +210,11 @@ slackApp.message(async ({ event, message, say }) => {
     console.log("📥 Incoming message:", message);
     if (!message.text) return;
     if (message.subtype === "bot_message") return;
+    let messageContainsFile = false;
+    if ((message.files && message.files.length > 0) || message.text.includes(`file`)) {
+        console.log(`📂 File detected in message from user ${message.user}`);
+        messageContainsFile = true;
+    }
 
     console.log(`📩 New message in #${event.channel}: ${event.text}`);
 
@@ -248,21 +253,22 @@ slackApp.message(async ({ event, message, say }) => {
         }
 
         // ✅ Retrieve File Context from Uploaded Files
-        const [rows] = await db.query(
-            "SELECT file_content FROM uploaded_files WHERE user_id = ? ORDER BY uploaded_at DESC",
-            [message.user]
-        );
-        console.log("📂 Extracted File Content for AI:", rows);
-        
         let fileContext = "";
+        if (messageContainsFile) {
+            const [rows] = await db.query(
+                "SELECT file_content FROM uploaded_files WHERE user_id = ? ORDER BY uploaded_at DESC LIMIT 3",
+                [message.user]
+            );
+            console.log("📂 Extracted File Content for AI:", rows);
 
-        if (Array.isArray(rows) && rows.length > 0) {
-            fileContext = rows.map(file => file.file_content).join("\n");
-        } else if (rows?.file_content) {
-            // Handle case where `rows` is a single object instead of an array
-            fileContext = rows.file_content;
+            if (Array.isArray(rows) && rows.length > 0) {
+                fileContext = rows.map(file => file.file_content).join("\n");
+            } else if (rows?.file_content) {
+                // Handle case where `rows` is a single object instead of an array
+                fileContext = rows.file_content;
+            }
+            console.log("📂 File Context for AI:", fileContext);
         }
-        console.log("📂 File Context for AI:", fileContext);
 
         // ✅ Get AI Response
         const response = await getOpenAIResponse(message.text, message.user, pastMessages, fileContext);
@@ -371,22 +377,21 @@ receiver.router.post("/api/chat", async (req, res) => {
         }
 
         // ✅ Retrieve File Context from Uploaded Files
-        const rows = await db.query(
-            "SELECT file_content FROM uploaded_files WHERE user_id = ? ORDER BY uploaded_at DESC",
-            [userId]
-        );
-
-        console.log("📂 Extracted File Content for AI:", rows);
-
         let fileContext = "";
+        if (message.includes("file")) {
+            const rows = await db.query(
+                "SELECT file_content FROM uploaded_files WHERE user_id = ? ORDER BY uploaded_at DESC",
+                [userId]
+            );
+            console.log("📂 Extracted File Content for AI:", rows);
 
-        if (Array.isArray(rows) && rows.length > 0) {
-            fileContext = rows.map(file => file.file_content).join("\n");
-        } else if (rows?.file_content) {
-            fileContext = rows.file_content;
+            if (Array.isArray(rows) && rows.length > 0) {
+                fileContext = rows.map(file => file.file_content).join("\n");
+            } else if (rows?.file_content) {
+                fileContext = rows.file_content;
+            }
+            console.log("📂 Extracted File Context for AI:", fileContext);
         }
-
-        console.log("📂 Extracted File Context for AI:", fileContext);
 
         // ✅ Get AI response
         const botResponse = await getOpenAIResponse(message, userId, pastMessages, fileContext);
